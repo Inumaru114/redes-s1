@@ -11,7 +11,7 @@ class Servidor:
         self.porta = porta
         self.conexoes = {}
         self.callback = None
-        self.seq_no = os.urandom()
+        self.seq_no = os.urandom(5)
         self.ack_no = self.seq_no + 1
         self.rede.registrar_recebedor(self._rdt_rcv)
 
