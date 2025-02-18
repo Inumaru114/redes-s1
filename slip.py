@@ -43,28 +43,29 @@ class Enlace:
     def __init__(self, linha_serial):
         self.linha_serial = linha_serial
         self.linha_serial.registrar_recebedor(self.__raw_recv)
+        self.buffer = b''
 
     def registrar_recebedor(self, callback):
         self.callback = callback
 
     def enviar(self, datagrama):
-        # TODO: Preencha aqui com o código para enviar o datagrama pela linha
-        data = datagrama.replace(b'\xDB', b'\xDB\xDD').replace(b'\xC0', b'\xDB\xDC')
-        data = b'\xC0' + data + b'\xC0'
-        self.linha_serial.enviar(data)
-        pass
+        datagrama_codificado = datagrama.replace(b'\xDB', b'\xDB\xDD')\
+                                        .replace(b'\xC0', b'\xDB\xDC')
+        datagrama_completo = b'\xC0' + datagrama_codificado + b'\xC0'
+        self.linha_serial.enviar(datagrama_completo)
 
     def __raw_recv(self, dados):
         self.buffer += dados
+        quadros = self.buffer.split(b'\xC0')
+        self.buffer = quadros[-1]
 
-        while b'\xC0' in self.buffer:
-            data, _, self.buffer = self.buffer.partition(b'\xC0')
-
-            if (len(data) ==0):
-                continue
-
-        data = data.replace(b'\xDB\xDC', b'\xC0').replace(b'\xDB\xDD', b'\xDB')    
-        
-        if (self.callback):
-            self.callback(data)
-        pass
+        for quadro in quadros[:-1]:
+            if quadro:
+                try:
+                    datagrama_decodificado = quadro.replace(b'\xDB\xDC', b'\xC0')\
+                                                   .replace(b'\xDB\xDD', b'\xDB')
+                    if self.callback:
+                        self.callback(datagrama_decodificado)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
